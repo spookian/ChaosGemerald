@@ -7,11 +7,54 @@ skincolors[SKINCOLOR_GEMRED] = {
 	accessible = false
 }
 
+local function gemerald_SS2AuraCreate(player)
+	local mobj_table = player.gemerald.aura_mobjs
+	local player_mobj = player.mo
+
+	-- create outer aura
+	local aura_obj = P_SpawnMobj(player_mobj.x, player_mobj.y, player_mobj.z, MT_SPIKE)
+	aura_obj.color = SKINCOLOR_GEMRED
+	aura_obj.colorized = true
+	aura_obj.flags = $ | MF_NOGRAVITY
+	
+	local size = (FRACUNIT * 33) / 30
+	aura_obj.spritexscale = size
+	aura_obj.spriteyscale = size
+ 	aura_obj.spriteyoffset = (-FRACUNIT * 3) / 2
+	aura_obj.dispoffset = -1
+	mobj_table[1] = aura_obj
+
+	-- create inner aura
+	local outer_obj = P_SpawnMobj(player_mobj.x, player_mobj.y, player_mobj.z, MT_SPIKE)
+	outer_obj.color = SKINCOLOR_GEMRED
+	outer_obj.colorized = true
+	outer_obj.flags = $ | MF_NOGRAVITY
+	
+	size = (FRACUNIT * 21) / 20
+	outer_obj.spritexscale = size
+	outer_obj.spriteyscale = size
+ 	outer_obj.spriteyoffset = (-FRACUNIT * 3) / 2
+	outer_obj.dispoffset = -1
+	mobj_table[2] = outer_obj
+end
+
+local function gemerald_ClearAura(gemerald) -- ONLY USE THIS IN NORMAL PLAY
+	for i,v in ipairs(gemerald.aura_mobjs) do
+		if (gemerald.aura_mobjs[i] != nil) then
+			P_RemoveMobj(gemerald.aura_mobjs[i])
+		end
+		gemerald.aura_mobjs[i] = nil
+	end
+end
+
 local function gemerald_GoHyper(player)
 	if (player.powers[pw_super] == 0) then
 		player.powers[pw_super] = 1	
 	end
+	gemerald_ClearAura(player.gemerald)
 	player.gemerald.hyper = true
+	gemerald_SS2AuraCreate(player) -- generic aura creation function
+
 	-- idk put some kind of transformation trigger here
 end
 
@@ -21,7 +64,7 @@ end
 
 local function gemerald_JumpSpin(player)
 	-- check for hyper
-	local can_super = true
+	local can_super = player.powers[pw_super] == 1
 	if (player.rings >= 100 and player.gemerald.hyper == false and can_super) then
 		gemerald_GoHyper(player)
 		return true
@@ -71,42 +114,8 @@ local function gemerald_UpdateAfterimageSprite(mobj, player)
 	P_MoveOrigin(mobj, player.mo.x, player.mo.y, player.mo.z)
 end
 
-local function gemerald_SuperSonic2Aura(player) -- red flickering outline and lightning
--- this local function uses two out of who knows how many mobjs in the table
+local function gemerald_SS2AuraUpdate(player) -- red flickering outline and lightning
 	local mobj_table = player.gemerald.aura_mobjs
-	local player_mobj = player.mo
-	
-	if (mobj_table[1] == nil) then
-		local aura_obj = P_SpawnMobj(player_mobj.x, player_mobj.y, player_mobj.z, MT_SPIKE)
-		--gemerald_UpdateAfterimageSprite(aura_obj, player)
-		aura_obj.color = SKINCOLOR_GEMRED
-		aura_obj.colorized = true
-		aura_obj.flags = $ | MF_NOGRAVITY
-
-		local size = (FRACUNIT * 23) / 20
-		aura_obj.spritexscale = size
-		aura_obj.spriteyscale = size
-		aura_obj.spriteyoffset = (-FRACUNIT * 3) / 2
-		aura_obj.dispoffset = -1;
-		
-		mobj_table[1] = aura_obj
-	end
-
-	if (mobj_table[2] == nil) then
-		local aura_obj = P_SpawnMobj(player_mobj.x, player_mobj.y, player_mobj.z, MT_SPIKE)
-		aura_obj.color = SKINCOLOR_GEMRED
-		aura_obj.colorized = true
-		aura_obj.flags = $ | MF_NOGRAVITY
-		
-		local size = (FRACUNIT * 33) / 30
-		aura_obj.spritexscale = size
-		aura_obj.spriteyscale = size
-		aura_obj.spriteyoffset = (-FRACUNIT * 3) / 2
-		aura_obj.dispoffset = -1;
-		
-		mobj_table[2] = aura_obj
-	end
-
 	-- both mobjs take the current 
 	gemerald_UpdateAfterimageSprite(mobj_table[1], player)
 	mobj_table[1].frame = $ | FF_TRANS60
@@ -118,13 +127,7 @@ local function gemerald_HyperSonicAura(player) -- lots of sparkles and holy glit
 end
 
 local function gemerald_HyperTailsAura(player) -- super flickies circling around player. purely cosmetic.
-end
-
-local function gemerald_ClearAura(gemerald) -- ONLY USE THIS IN NORMAL PLAY
-	for i,v in ipairs(gemerald.aura_mobjs) do
-		P_RemoveMobj(gemerald.aura_mobjs[i])
-		gemerald.aura_mobjs[i] = nil
-	end
+	
 end
 
 local function gemerald_ThinkFrame()
@@ -135,7 +138,7 @@ local function gemerald_ThinkFrame()
 		end
 		
 		if (player.gemerald.hyper) then
-			gemerald_SuperSonic2Aura(player)
+			gemerald_SS2AuraUpdate(player)  -- replace with function to process aura
 			player.gemerald.hyper_counter = $ + 1
 			if (player.gemerald.hyper_counter == 17) then
 				player.gemerald.hyper_counter = -18
