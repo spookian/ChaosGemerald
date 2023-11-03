@@ -1,34 +1,55 @@
 -- consider completely reimplementing super form and disabling for all character that support this mode
 
+local function gemerald_UpdateAfterimageSprite(mobj, player)
+	mobj.skin = player.mo.skin
+	mobj.sprite = player.mo.sprite
+	mobj.sprite2 = player.mo.sprite2
+	mobj.frame = player.mo.frame
+	mobj.tics = player.mo.tics
+	mobj.angle = player.drawangle
+	
+	P_MoveOrigin(mobj, player.mo.x, player.mo.y, player.mo.z)
+end
+
 local function gemerald_SS2AuraCreate(player)
 	local mobj_table = player.gemerald.aura_mobjs
 	local player_mobj = player.mo
 
+	-- create all parts
+	for i=1,2 do
+		local x = P_SpawnMobj(player_mobj.x, player_mobj.y, player_mobj.z, MT_BUSH)
+		x.flags = MF_NOGRAVITY | MF_NOCLIP | MF_NOTHINK
+		gemerald_UpdateAfterimageSprite(x, player)
+		
+		if (i > 2) then 
+			x.sprite = SPR_THOK
+			x.frame = $ | FF_TRANS90
+			x.color = player_mobj.color
+			x.colorized = true
+			x.blendmode = AST_ADD
+		end
+		
+		x.dispoffset = -i
+		mobj_table[i] = x
+	end
+
 	-- create outer aura
-	local aura_obj = P_SpawnMobj(player_mobj.x, player_mobj.y, player_mobj.z, MT_SPIKE)
+	local aura_obj = mobj_table[1]
 	aura_obj.color = SKINCOLOR_GEMRED
-	aura_obj.colorized = true
-	aura_obj.flags = $ | MF_NOGRAVITY
 	
 	local size = (FRACUNIT * 33) / 30
 	aura_obj.spritexscale = size
 	aura_obj.spriteyscale = size
  	aura_obj.spriteyoffset = (-FRACUNIT * 3) / 2
-	aura_obj.dispoffset = -1
-	mobj_table[1] = aura_obj
 
 	-- create inner aura
-	local outer_obj = P_SpawnMobj(player_mobj.x, player_mobj.y, player_mobj.z, MT_SPIKE)
+	local outer_obj = mobj_table[2]
 	outer_obj.color = SKINCOLOR_GEMRED
-	outer_obj.colorized = true
-	outer_obj.flags = $ | MF_NOGRAVITY
 	
 	size = (FRACUNIT * 21) / 20
 	outer_obj.spritexscale = size
 	outer_obj.spriteyscale = size
  	outer_obj.spriteyoffset = (-FRACUNIT * 3) / 2
-	outer_obj.dispoffset = -1
-	mobj_table[2] = outer_obj
 end
 
 local function gemerald_ClearAura(gemerald) -- ONLY USE THIS IN NORMAL PLAY
@@ -59,24 +80,16 @@ local function gemerald_HyperCheck(player)
 	return false;
 end
 
-local function gemerald_UpdateAfterimageSprite(mobj, player)
-	mobj.skin = player.mo.skin
-	mobj.sprite = player.mo.sprite
-	mobj.sprite2 = player.mo.sprite2
-	mobj.frame = player.mo.frame
-	mobj.tics = player.mo.tics
-	mobj.angle = player.drawangle
-
-	P_MoveOrigin(mobj, player.mo.x, player.mo.y, player.mo.z)
-end
-
 local function gemerald_SS2AuraUpdate(player) -- red flickering outline and lightning
 	local mobj_table = player.gemerald.aura_mobjs
 	-- both mobjs take the current 
 	gemerald_UpdateAfterimageSprite(mobj_table[1], player)
 	mobj_table[1].frame = $ | FF_TRANS60
+	
 	gemerald_UpdateAfterimageSprite(mobj_table[2], player)
 	mobj_table[2].frame = $ | FF_TRANS30
+	
+	-- red tiny sparkles
 end
 
 local function gemerald_HyperSonicAura(player) -- lots of sparkles and holy glitter stuff. maybe flowers pop up?
@@ -87,7 +100,7 @@ local function gemerald_HyperTailsAura(player) -- super flickies circling around
 end
 
 local function gemerald_SS2Palette(player)
-	player.mo.color = SKINCOLOR_GEMDUPER1 + abs(((player.gemerald.hyper_counter >> 1) % 9) - 4) -- i took this from the source code
+	player.mo.color = SKINCOLOR_GEMDUPER1 + abs(((leveltime >> 1) % 9) - 4) -- i took this from the source code
 end
 
 local function gemerald_HyperUpdate()
@@ -103,6 +116,11 @@ local function gemerald_HyperUpdate()
 				gemerald_SS2Palette(player)
 				
 				player.gemerald.hyper_counter = $ + 1
+				if (player.gemerald.hyper_counter == 17 + player.gemerald.half_frame) then
+					player.rings = $ - 1
+					player.gemerald.hyper_counter = 0
+					player.gemerald.half_frame = $ ^^ 1 -- boolean flip
+				end
 				
 				if (player.rings == 0 or player.exiting) then 
 					player.gemerald.hyper = false

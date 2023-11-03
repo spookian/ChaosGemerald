@@ -6,7 +6,8 @@ local function gemerald_InitObject(player)
 	gemerald.hyper = false
 	gemerald.hyper_counter = 0
 	gemerald.disable_inputs = false
-	gemerald.aura_mobjs = {} 
+	gemerald.aura_mobjs = {}
+	gemerald.half_frame = 0
 
 	return gemerald	
 end
