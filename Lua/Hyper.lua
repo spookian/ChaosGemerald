@@ -1,11 +1,4 @@
-local gemerald_EmeraldPowerFunctions = {}
-freeslot("SKINCOLOR_GEMRED")
-skincolors[SKINCOLOR_GEMRED] = {
-	name = "you're not supposed to use this",
-	ramp = {35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35},
-	invcolor = SKINCOLOR_RED,
-	accessible = false
-}
+-- consider completely reimplementing super form and disabling for all character that support this mode
 
 local function gemerald_SS2AuraCreate(player)
 	local mobj_table = player.gemerald.aura_mobjs
@@ -48,9 +41,7 @@ local function gemerald_ClearAura(gemerald) -- ONLY USE THIS IN NORMAL PLAY
 end
 
 local function gemerald_GoHyper(player)
-	if (player.powers[pw_super] == 0) then
-		player.powers[pw_super] = 1	
-	end
+	player.powers[pw_super] = 0
 	gemerald_ClearAura(player.gemerald)
 	player.gemerald.hyper = true
 	gemerald_SS2AuraCreate(player) -- generic aura creation function
@@ -58,49 +49,14 @@ local function gemerald_GoHyper(player)
 	-- idk put some kind of transformation trigger here
 end
 
-local function gemerald_CancelSuper(player)
-	player.powers[pw_super] = 0
-end
-
-local function gemerald_JumpSpin(player)
+local function gemerald_HyperCheck(player)
 	-- check for hyper
-	local can_super = player.powers[pw_super] == 1
+	local can_super = player.powers[pw_super]
 	if (player.rings >= 100 and player.gemerald.hyper == false and can_super) then
 		gemerald_GoHyper(player)
 		return true
 	end
 	return false;
-end
-
-local function gemerald_PlayerCmd(player, cmd)
-	if player.gemerald.disable_inputs then
-		return true
-	end
-	-- custom 1 will execute current function pointer
-	return false
-end
-
-local function gemerald_InitObject()
-	local gemerald = {}
-
-	gemerald.hyper = false
-	gemerald.hyper_counter = -18
-	gemerald.disable_inputs = false
-	gemerald.aura_mobjs = {} 
-
-	return gemerald	
-end
-
-local function gemerald_ClearObject(gemerald)
-	gemerald.hyper = false
-	gemerald.disable_inputs = false
-
-	for i,v in ipairs(gemerald.aura_mobjs) do
-		gemerald.aura_mobjs[i] = nil -- i'm sure srb2 clears all mobjs whenever this needs to be cleared	
-	end
-end
-
-local function gemerald_BurstEmeraldPower(gemerald)
 end
 
 local function gemerald_UpdateAfterimageSprite(mobj, player)
@@ -130,29 +86,39 @@ local function gemerald_HyperTailsAura(player) -- super flickies circling around
 	
 end
 
-local function gemerald_ThinkFrame()
+local function gemerald_SS2Palette(player)
+	player.mo.color = SKINCOLOR_GEMDUPER1 + abs(((player.gemerald.hyper_counter >> 1) % 9) - 4) -- i took this from the source code
+end
+
+local function gemerald_HyperUpdate()
 	-- aura local functions
 	for player in players.iterate do
-		if (player.gemerald == nil) then
-			player.gemerald = gemerald_InitObject()
-		end
-		
-		if (player.gemerald.hyper) then
-			gemerald_SS2AuraUpdate(player)  -- replace with function to process aura
-			player.gemerald.hyper_counter = $ + 1
-			if (player.gemerald.hyper_counter == 17) then
-				player.gemerald.hyper_counter = -18
-				player.rings = $ - 1
-			end
-			
-			if (player.powers[pw_super] == 0) then 
-				player.gemerald.hyper = false
-				player.gemerald.hyper_counter = -18
-				gemerald_ClearAura(player.gemerald)
+		if (player.gemerald) then
+			if (player.gemerald.hyper == true) then
+				if player.mo.skin == "sonic" then 
+					player.mo.eflags = $ | MFE_FORCESUPER 
+					player.mo.frame = $ | FF_FULLBRIGHT
+				end
+				gemerald_SS2AuraUpdate(player)  -- replace with function to process aura
+				gemerald_SS2Palette(player)
+				
+				player.gemerald.hyper_counter = $ + 1
+				
+				if (player.rings == 0 or player.exiting) then 
+					player.gemerald.hyper = false
+					player.gemerald.hyper_counter = 0
+					gemerald_ClearAura(player.gemerald)
+					player.mo.color = player.skincolor
+					player.mo.eflags = $ & ~MFE_FORCESUPER 
+					player.mo.frame = $ & ~FF_FULLBRIGHT
+				end
+			else
+				player.gemerald.hyper_counter = 0
 			end
 		end
 	end
 end
+
 -- hook section
-addHook("ThinkFrame", gemerald_ThinkFrame)
-addHook("JumpSpinSpecial", gemerald_JumpSpin)
+addHook("ThinkFrame", gemerald_HyperUpdate)
+addHook("JumpSpinSpecial", gemerald_HyperCheck)
